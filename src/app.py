@@ -8,8 +8,10 @@ import json
 from loguru import logger
 
 import db
+import influxdb
 
 conn = db.init()
+influx = influxdb.Client()
 
 logger.info("Listening for changes...")
 
@@ -17,26 +19,20 @@ logger.info("Listening for changes...")
 def main() -> None:
     """App entry point."""
     for notify in conn.notifies():
-        data = json.loads(notify.payload)
-
-        record_id: int = data["id"]
-        t1: int = data["t1"]
-        t2: int = data["t2"]
-        t3: int = data["t3"]
-        t4: int = data["t4"]
-        state: int = data["state"]
-        device_id: int = data["device_id"]
+        data: db.ChangeEvent = json.loads(notify.payload)
 
         logger.info(
             "Record changed: id={} t1={} t2={} t3={} t4={} state={} device_id={}",
-            record_id,
-            t1,
-            t2,
-            t3,
-            t4,
-            state,
-            device_id,
+            data["new"]["id"],
+            data["new"]["t1"],
+            data["new"]["t2"],
+            data["new"]["t3"],
+            data["new"]["t4"],
+            data["new"]["state"],
+            data["new"]["device_id"],
         )
+
+        influx.write_event(data)
 
 
 if __name__ == "__main__":

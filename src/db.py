@@ -18,17 +18,42 @@ CREATE TABLE IF NOT EXISTS records (
 
 CREATE OR REPLACE FUNCTION notify_record_change()
 RETURNS trigger AS $$
+DECLARE
+    changed_fields text[] := ARRAY[]::text[];
 BEGIN
+    IF TG_OP = 'UPDATE' THEN
+        IF OLD IS NOT DISTINCT FROM NEW THEN
+            RETURN NEW;
+        END IF;
+
+        IF OLD.t1 IS DISTINCT FROM NEW.t1 THEN
+            changed_fields := array_append(changed_fields, 't1');
+        END IF;
+
+        IF OLD.t2 IS DISTINCT FROM NEW.t2 THEN
+            changed_fields := array_append(changed_fields, 't2');
+        END IF;
+
+        IF OLD.t3 IS DISTINCT FROM NEW.t3 THEN
+            changed_fields := array_append(changed_fields, 't3');
+        END IF;
+
+        IF OLD.t4 IS DISTINCT FROM NEW.t4 THEN
+            changed_fields := array_append(changed_fields, 't4');
+        END IF;
+
+        IF OLD.state IS DISTINCT FROM NEW.state THEN
+            changed_fields := array_append(changed_fields, 'state');
+        END IF;
+    END IF;
+
     PERFORM pg_notify(
         'record_changed',
         json_build_object(
-            'id', NEW.id,
-            't1', NEW.t1,
-            't2', NEW.t2,
-            't3', NEW.t3,
-            't4', NEW.t4,
-            'state', NEW.state,
-            'device_id', NEW.device_id
+            'op', TG_OP,
+            'changed', changed_fields,
+            'old', to_jsonb(OLD),
+            'new', to_jsonb(NEW)
         )::text
     );
 
@@ -67,6 +92,14 @@ class Record(typing.TypedDict):
     t4: int
     state: int
     device_id: int
+
+class ChangeEvent(typing.TypedDict):
+    """A DB data change event."""
+
+    op: typing.Literal["INSERT", "UPDATE"]
+    changed: list[str]
+    old: Record
+    new: Record
 
 
 def build_pg_url() -> str:
