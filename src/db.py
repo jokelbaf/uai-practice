@@ -93,6 +93,7 @@ class Record(typing.TypedDict):
     state: int
     device_id: int
 
+
 class ChangeEvent(typing.TypedDict):
     """A DB data change event."""
 

@@ -42,10 +42,9 @@ class Client:
         if "state" in event["changed"]:
             point = point.field("state", new["state"])  # type: ignore[reportUnknownMemberType]
 
-        if new["state"] == 0 and any(t in event["changed"] for t in ["t1","t2","t3","t4"]):
+        if new["state"] == 0 and any(t in event["changed"] for t in ["t1", "t2", "t3", "t4"]):
             point = (
-                point  # type: ignore[reportUnknownMemberType]
-                .field("t1", new["t1"])
+                point.field("t1", new["t1"])  # type: ignore[reportUnknownMemberType]
                 .field("t2", new["t2"])
                 .field("t3", new["t3"])
                 .field("t4", new["t4"])
