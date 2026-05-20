@@ -2,6 +2,16 @@
 
 A simple practice project.
 
+## Prerequisites
+
+The following tools are required to deploy the service in production mode on your device:
+- [Docker](https://docs.docker.com/get-docker/)
+- [Docker Compose](https://docs.docker.com/compose/install/)
+
+For development, you will also need:
+- [Python 3.13](https://www.python.org/downloads/)
+- [uv](https://docs.astral.sh/uv/) (Python package manager)
+
 ## Development
 
 To run the application locally:
@@ -14,8 +24,9 @@ cd uai-practice
 ```bash
 uv sync
 ```
-3. Create `.env` file (see [`.env.example`](.env.example) for reference).
-4. Run the application:
+3. Deploy all the required services on your local machine manually (InfluxDB, Grafana, PostgreSQL).
+4. Create `.env` file (see [`.env.example`](.env.example) for reference).
+5. Run the application:
 ```bash
 uv run src/app.py
 ```
