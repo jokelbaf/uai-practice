@@ -5,8 +5,10 @@ import typing
 @typing.overload
 def get_env(name: str, required: typing.Literal[True]) -> str: ...
 
+
 @typing.overload
 def get_env(name: str, required: typing.Literal[False] = False) -> str | None: ...
+
 
 def get_env(name: str, required: bool = False) -> str | None:
     """Get an environment variable or raise an error if it's not set."""

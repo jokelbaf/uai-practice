@@ -103,6 +103,7 @@ if IS_PROD:
             return FileResponse(static_dir / "index.html", media_type="text/html")
         return response
 
+
 if __name__ == "__main__":
     uvicorn.run(
         "app:app",
