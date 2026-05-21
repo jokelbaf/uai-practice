@@ -9,8 +9,36 @@ dependencies = [
     "asyncpg>=0.31.0",
     "av>=16.1.0",
     "fastapi[standard]>=0.136.1",
+    "loguru>=0.7.3",
     "opencv-python>=4.13.0.92",
     "pydantic>=2.13.4",
     "python-dotenv>=1.2.2",
     "uvicorn>=0.47.0",
 ]
+
+[dependency-groups]
+dev = [
+    "ruff>=0.14.13",
+]
+
+[tool.ruff]
+line-length = 100
+target-version = "py313"
+
+[tool.ruff.lint]
+select = [
+    "E",   # pycodestyle errors
+    "W",   # pycodestyle warnings
+    "F",   # pyflakes
+    "I",   # isort
+    "N",   # pep8-naming
+    "UP",  # pyupgrade
+    "B",   # flake8-bugbear
+    "C4",  # flake8-comprehensions
+    "SIM", # flake8-simplify
+]
+ignore = []
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"

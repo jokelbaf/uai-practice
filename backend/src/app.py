@@ -3,31 +3,65 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+import logging
 import os
-import uvicorn
-from fastapi import FastAPI, Request, Response, status
 from contextlib import asynccontextmanager
-import db
-from aiortc import RTCPeerConnection, RTCSessionDescription
-from stream import RTSPVideoTrack
+
+import uvicorn
+from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-import pydantic
+from loguru import logger
+
+import api
+import db
+
+for name in list(logging.root.manager.loggerDict.keys()):
+    logging.getLogger(name).handlers.clear()
+    logging.getLogger(name).propagate = True
 
 
-class StreamParams(pydantic.BaseModel):
-    sdp: str
-    type: str
+class InterceptHandler(logging.Handler):
+    def emit(self, record: logging.LogRecord) -> None:
+        try:
+            level = logger.level(record.levelname).name
+        except ValueError:
+            level = record.levelno
+
+        frame, depth = logging.currentframe(), 2
+        while frame.f_back and frame.f_code.co_filename == logging.__file__:
+            frame = frame.f_back
+            depth += 1
+
+        logger.opt(depth=depth, exception=record.exc_info).log(level, record.getMessage())
+
+
+logging.basicConfig(handlers=[InterceptHandler()], level=logging.INFO)
+
+loggers = (
+    "uvicorn",
+    "uvicorn.access",
+    "uvicorn.error",
+    "fastapi",
+    "asyncio",
+    "starlette",
+    "sqlalchemy.engine",
+)
+
+for logger_name in loggers:
+    logging_logger = logging.getLogger(logger_name)
+    logging_logger.handlers = []
+    logging_logger.propagate = True
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    app.state.conn = await db.connect()
+    app.state.pool = await db.connect()
+    logger.info("Database up!")
     yield
+    await app.state.pool.close()  # type: ignore[reportUnknownMemberType]
 
 
 app = FastAPI(lifespan=lifespan)
-
-pcs = set()
 
 app.add_middleware(
     CORSMiddleware,
@@ -37,63 +71,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-
-@app.get("/api/records")
-async def records(request: Request):
-    rows = await request.app.state.conn.fetch("SELECT * FROM records")
-
-    records = []
-
-    for r in rows:
-        row = dict(r)
-        del row["rtsp_url"]
-        records.append(row)
-
-    return records
-
-
-@app.post("/api/stream/{id}")
-async def stream(request: Request, id: int, params: StreamParams, response: Response):
-    row = await request.app.state.conn.fetchrow(
-        "SELECT * FROM records WHERE id = $1", id
-    )
-
-    if row is None:
-        response.status_code = status.HTTP_404_NOT_FOUND
-        return "Record not found"
-
-    offer = RTCSessionDescription(
-        sdp=params.sdp,
-        type=params.type,
-    )
-
-    pc = RTCPeerConnection()
-
-    pcs.add(pc)
-
-    @pc.on("connectionstatechange")
-    async def on_connectionstatechange():
-        print("Connection:", pc.connectionState)
-
-        if pc.connectionState in ["failed", "closed"]:
-            await pc.close()
-            pcs.discard(pc)
-
-    track = RTSPVideoTrack(dict(row)["rtsp_url"])
-
-    pc.addTrack(track)
-
-    await pc.setRemoteDescription(offer)
-
-    answer = await pc.createAnswer()
-
-    await pc.setLocalDescription(answer)
-
-    return {
-        "sdp": pc.localDescription.sdp,
-        "type": pc.localDescription.type,
-    }
-
+app.include_router(api.router)
 
 if __name__ == "__main__":
     uvicorn.run(
