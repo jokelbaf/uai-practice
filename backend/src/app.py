@@ -5,15 +5,19 @@ load_dotenv()
 
 import logging
 import os
+import pathlib
+import typing
 from contextlib import asynccontextmanager
 
 import uvicorn
-from fastapi import FastAPI
+from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from loguru import logger
 
 import api
 import db
+from constants import IS_PROD
 
 for name in list(logging.root.manager.loggerDict.keys()):
     logging.getLogger(name).handlers.clear()
@@ -72,6 +76,32 @@ app.add_middleware(
 )
 
 app.include_router(api.router)
+
+if IS_PROD:
+    from starlette.responses import FileResponse
+
+    static_dir = pathlib.Path("static")
+    app.mount("/assets", StaticFiles(directory=static_dir / "assets"), name="static-assets")
+
+    @app.middleware("http")
+    async def spa_fallback(
+        request: Request,
+        call_next: typing.Callable[[Request], typing.Awaitable[Response]],
+    ) -> Response:
+        path = request.url.path
+        if not path.startswith(("/api", "/assets")) and request.method == "GET":
+            static_file = static_dir / path.lstrip("/")
+            if static_file.is_file():
+                return FileResponse(static_file)
+
+        response: Response = await call_next(request)
+        if (
+            response.status_code == 404
+            and not path.startswith(("/api", "/assets"))
+            and request.method == "GET"
+        ):
+            return FileResponse(static_dir / "index.html", media_type="text/html")
+        return response
 
 if __name__ == "__main__":
     uvicorn.run(
