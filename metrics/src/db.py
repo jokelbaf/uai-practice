@@ -13,6 +13,7 @@ CREATE TABLE IF NOT EXISTS records (
     t3 INT NOT NULL,
     t4 INT NOT NULL,
     state INT NOT NULL,
+    rtsp_url TEXT,
     device_id BIGINT NOT NULL
 );
 
