@@ -8,7 +8,7 @@ import json
 from loguru import logger
 
 import db
-import influxdb
+import influxdb as influxdb
 
 conn = db.init()
 influx = influxdb.Client()

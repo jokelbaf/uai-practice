@@ -35,11 +35,11 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
-  app:
+  metrics:
     build:
-      context: .
+      context: ./metrics
       dockerfile: Dockerfile
-    container_name: app
+    container_name: metrics
     environment:
       LOGURU_LEVEL: ${LOGURU_LEVEL:-INFO}
       PG_USER: ${PG_USER}
