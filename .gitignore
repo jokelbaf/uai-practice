@@ -15,3 +15,6 @@ wheels/
 # InfluxDB
 /data
 /config
+
+# Backend
+static/
