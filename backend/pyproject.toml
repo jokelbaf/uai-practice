@@ -4,4 +4,13 @@ version = "0.1.0"
 description = ""
 readme = "README.md"
 requires-python = ">=3.13"
-dependencies = []
+dependencies = [
+    "aiortc>=1.14.0",
+    "asyncpg>=0.31.0",
+    "av>=16.1.0",
+    "fastapi[standard]>=0.136.1",
+    "opencv-python>=4.13.0.92",
+    "pydantic>=2.13.4",
+    "python-dotenv>=1.2.2",
+    "uvicorn>=0.47.0",
+]
