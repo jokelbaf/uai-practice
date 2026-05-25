@@ -29,6 +29,7 @@ export default function Record({ record }: { record: Record }) {
                 videoRef.current.srcObject = event.streams[0];
             };
 
+            pc.addTransceiver('video', { direction: 'recvonly' });
             const offer = await pc.createOffer();
             await pc.setLocalDescription(offer);
 

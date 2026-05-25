@@ -49,7 +49,7 @@ export default function Home() {
 			) : error ? (
 				<ErrorAlert message={error} />
 			) : (
-				<div className='flex'>
+				<div className='grid grid-cols-2 gap-4'>
 					{records?.map((record, idx) => (
 						<Record key={idx} record={record} />
 					))}
