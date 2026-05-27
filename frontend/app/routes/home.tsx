@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 
 import ErrorAlert from "~/components/ErrorAlert";
 import Record from "~/components/Record";
@@ -30,6 +30,7 @@ function systemDotClass(state: "alarm" | "error" | "online") {
 
 export default function Home() {
 	const [records, setRecords] = useState<RecordT[] | null>(null);
+	const recordsRef = useRef<RecordT[] | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
 	const [clock, setClock] = useState("--:--:--");
@@ -40,9 +41,14 @@ export default function Home() {
 	}, []);
 
 	useEffect(() => {
-		const controller = new AbortController();
+		let isMounted = true;
+		let currentController: AbortController | null = null;
 
-		const fetchData = async () => {
+		const fetchData = async (isInitialFetch = false) => {
+			currentController?.abort();
+			const controller = new AbortController();
+			currentController = controller;
+
 			try {
 				const response = await fetch("/api/records", { signal: controller.signal });
 				if (!response.ok) {
@@ -51,27 +57,40 @@ export default function Home() {
 				}
 
 				const data = (await response.json()) as RecordT[];
+				if (!isMounted) return;
+
+				recordsRef.current = data;
 				setRecords(data);
+				setError(null);
 			} catch (err) {
 				if (err instanceof DOMException && err.name === "AbortError") return;
+				if (recordsRef.current) return;
+
 				const msg = err instanceof Error && err.message;
 				setError(msg || "Error fetching data");
 			} finally {
-				setLoading(false);
+				if (isMounted && isInitialFetch) setLoading(false);
+				if (currentController === controller) currentController = null;
 			}
 		};
 
-		fetchData();
-		return () => controller.abort();
+		void fetchData(true);
+		const refreshTimer = window.setInterval(() => void fetchData(), 3000);
+
+		return () => {
+			isMounted = false;
+			window.clearInterval(refreshTimer);
+			currentController?.abort();
+		};
 	}, []);
 
 	const stats = useMemo(() => {
 		const list = records ?? [];
-		const alerts = list.reduce(
-			(sum, record) =>
-				sum + [record.t1, record.t2, record.t3, record.t4].filter((value) => value !== 0).length,
-			0,
-		);
+		const alerts = list.reduce((sum, record) => {
+			if (record.state !== 0) return sum;
+
+			return sum + [record.t1, record.t2, record.t3, record.t4].filter((value) => value !== 0).length;
+		}, 0);
 		const errors = list.filter((record) => record.state !== 0).length;
 		const totalSensors = list.length * 5;
 

@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 
 import type { Record as RecordType } from "~/types/record";
 
-type SensorKind = "clean" | "dirty";
+type SensorKind = "clean" | "dirty" | "unknown";
 type RecordStatus = "reading" | "error";
 type StreamStatus = "connecting" | "reconnecting" | "live";
 type FrameCallbackVideo = HTMLVideoElement & {
@@ -12,11 +12,15 @@ type FrameCallbackVideo = HTMLVideoElement & {
 
 const sensorNames = ["Датчик 1", "Датчик 2", "Датчик 3", "Датчик 4"];
 
-function sensorKind(value: number): SensorKind {
+function sensorKind(value: number | null): SensorKind {
+	if (value === null) return "unknown";
+
 	return value === 0 ? "clean" : "dirty";
 }
 
 function sensorLabel(kind: SensorKind) {
+	if (kind === "unknown") return "-";
+
 	return kind === "clean" ? "ЧИСТО" : "ГРЯЗНО";
 }
 
@@ -39,6 +43,10 @@ function padId(id: number) {
 }
 
 function sensorClass(kind: SensorKind) {
+	if (kind === "unknown") {
+		return "border-[#2a3848] bg-transparent text-[#4a6070]";
+	}
+
 	if (kind === "dirty") {
 		return "border-[#7f1d1d] bg-[#1a0505] text-[#ef4444]";
 	}
@@ -47,6 +55,8 @@ function sensorClass(kind: SensorKind) {
 }
 
 function sensorDotClass(kind: SensorKind) {
+	if (kind === "unknown") return "bg-[#4a6070]";
+
 	if (kind === "dirty") {
 		return "bg-[#ef4444] shadow-[0_0_6px_#ef4444] animate-[pulse-dot_0.8s_ease-in-out_infinite]";
 	}
@@ -84,7 +94,7 @@ function reconnectText(status: StreamStatus) {
 	return status === "reconnecting" ? "ПЕРЕПІДКЛЮЧЕННЯ..." : "ПІДКЛЮЧЕННЯ...";
 }
 
-function SensorBlock({ name, value }: { name: string; value: number }) {
+function SensorBlock({ name, value }: { name: string; value: number | null }) {
 	const kind = sensorKind(value);
 
 	return (
@@ -124,8 +134,8 @@ function CameraGlyph() {
 export default function Record({ record }: { record: RecordType }) {
 	const videoRef = useRef<HTMLVideoElement | null>(null);
 	const [streamStatus, setStreamStatus] = useState<StreamStatus>("connecting");
-	const values = sensorValues(record);
 	const status = statusKind(record.state);
+	const values = status === "reading" ? sensorValues(record) : [null, null, null, null];
 	const statusMeta = statusLabel(status);
 	const hasAlarm = values.some((value) => sensorKind(value) === "dirty");
 	const camId = `CAM-${padId(record.id)}`;
