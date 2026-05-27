@@ -1,3 +1,5 @@
+import asyncio
+
 import pydantic
 from aiortc import RTCPeerConnection, RTCSessionDescription
 from fastapi import Request, Response, status
@@ -45,26 +47,55 @@ async def stream(
     )
 
     pc = RTCPeerConnection()
+    pcs.add(pc)
+    closing = False
 
-    async def on_connectionstatechange():
+    async def close_peer_connection() -> None:
+        nonlocal closing
+        if closing:
+            return
+
+        closing = True
+        pcs.discard(pc)
+        await pc.close()
+
+    def schedule_close_peer_connection() -> None:
+        if not closing:
+            asyncio.create_task(close_peer_connection())
+
+    async def on_connectionstatechange() -> None:
         logger.info(f"Connection state changed: {pc.connectionState}")
 
-        if pc.connectionState in ["failed", "closed"]:
-            await pc.close()
-            pcs.discard(pc)
+        if pc.connectionState in ["failed", "closed", "disconnected"]:
+            schedule_close_peer_connection()
 
-    pc.on("iceconnectionstatechange", on_connectionstatechange)
-    pcs.add(pc)
+    async def on_iceconnectionstatechange() -> None:
+        logger.info(f"ICE connection state changed: {pc.iceConnectionState}")
+
+        if pc.iceConnectionState in ["failed", "closed", "disconnected"]:
+            schedule_close_peer_connection()
+
+    pc.on("connectionstatechange", on_connectionstatechange)
+    pc.on("iceconnectionstatechange", on_iceconnectionstatechange)
 
     track = RTSPVideoTrack(dict(row)["rtsp_url"])
-
     pc.addTrack(track)
 
-    await pc.setRemoteDescription(offer)
-    answer = await pc.createAnswer()
-    await pc.setLocalDescription(answer)
+    try:
+        await pc.setRemoteDescription(offer)
+        answer = await pc.createAnswer()
+        await pc.setLocalDescription(answer)
+    except Exception:
+        await close_peer_connection()
+        raise
 
     return StreamParams(
         sdp=pc.localDescription.sdp,
         type=pc.localDescription.type,
     )
+
+
+async def close_peer_connections() -> None:
+    peers = list(pcs)
+    pcs.clear()
+    await asyncio.gather(*(pc.close() for pc in peers), return_exceptions=True)
