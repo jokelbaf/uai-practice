@@ -62,6 +62,7 @@ async def lifespan(app: FastAPI):
     app.state.pool = await db.connect()
     logger.info("Database up!")
     yield
+    await api.close_peer_connections()
     await app.state.pool.close()  # type: ignore[reportUnknownMemberType]
 
 
