@@ -18,6 +18,9 @@ class StreamParams(pydantic.BaseModel):
     sdp: str
     type: str
 
+@router.get("/health")
+async def health() -> str:
+    return "OK"
 
 @router.get("/records")
 async def records(request: Request) -> list[db.Record]:

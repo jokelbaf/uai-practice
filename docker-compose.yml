@@ -61,6 +61,29 @@ services:
       timeout: 5s
       retries: 3
       start_period: 5s
+  web-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: web-app
+    ports:
+      - "6000:6000"
+    environment:
+      LOGURU_LEVEL: ${LOGURU_LEVEL:-INFO}
+      PG_USER: ${PG_USER}
+      PG_PASSWORD: ${PG_PASSWORD}
+      PG_DB: ${PG_DB}
+      PG_HOST: pg
+      PG_PORT: 5432
+    depends_on:
+      pg:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:6000/api/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+      start_period: 5s
   grafana:
     image: grafana/grafana:latest
     container_name: grafana
