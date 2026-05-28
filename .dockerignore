@@ -6,8 +6,13 @@ dist/
 wheels/
 *.egg-info
 
+# Frontend-generated files
+frontend/node_modules/
+frontend/build/
+
 # Virtual environments
 .venv
+**/.venv/
 
 # Other
 .env
